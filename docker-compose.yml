@@ -1,0 +1,52 @@
+version: "3.3"
+
+services:
+  rabbitmq:
+    hostname: rabbitmq
+    image: rabbitmq:management
+    logging:
+      driver: "none"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=mypass
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: web
+    command: /api/scripts/run_web.sh
+    volumes:
+      - .:/app
+    ports:
+      - "6072:6072"
+    links:
+      - rabbitmq
+    depends_on:
+      - rabbitmq
+      - db
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /api/scripts/run_celery.sh
+    volumes:
+      - .:/app
+    links:
+      - rabbitmq
+    depends_on:
+      - rabbitmq
+      - db
+
+  db:
+    image: postgres:12
+    volumes:
+      - app-db-data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+
+volumes:
+  app-db-data:
